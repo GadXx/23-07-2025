@@ -12,6 +12,10 @@
    ```sh
    go run ./cmd/main.go
    ```
+3. Swagger
+  ```sh
+   http://localhost:8080/docs/
+   ```
 
 ## Основные URL-эндпоинты
 
