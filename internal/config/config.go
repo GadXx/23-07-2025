@@ -28,7 +28,7 @@ func DefaultConfig() *Config {
 	return &Config{
 		Port:            os.Getenv("SERVER_PORT"),
 		AllowedExts:     []string{".pdf", ".jpeg"},
-		MaxFilesPerTask: GetEnvInt("MAX_SESSIONS", 10),
-		MaxActiveTasks:  GetEnvInt("MAX_ARCHIVE_SIZE", 10),
+		MaxFilesPerTask: GetEnvInt("MAX_SESSIONS", 3),
+		MaxActiveTasks:  GetEnvInt("MAX_FILES_PER_TASK", 3),
 	}
 }

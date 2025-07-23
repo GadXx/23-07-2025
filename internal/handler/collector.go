@@ -27,9 +27,31 @@ func NewCollectorHandler(archiveService *service.ArchiveService) *CollectorHandl
 	}
 }
 
+func IsStringValid(str string) bool {
+	head, err := http.Head(str)
+	if err != nil {
+		return false
+	}
+	switch head.Header["Content-Type"][0] {
+	case "image/jpeg":
+	case "image/png":
+	case "application/pdf":
+	default:
+		return false
+	}
+	return true
+}
+
+// HandleStartTask godoc
+// @Summary      Создать новую задачу
+// @Tags         tasks
+// @Accept       json
+// @Produce      json
+// @Param        request body object{link=string} true "Ссылка на файл"
+// @Router       /start [post]
 func (h *CollectorHandler) HandleStartTask(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		Links []string `json:"links"`
+		Link string `json:"link"`
 	}
 	decoder := json.NewDecoder(r.Body)
 	err := decoder.Decode(&req)
@@ -39,14 +61,18 @@ func (h *CollectorHandler) HandleStartTask(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	taskID := rand.Text()
+	if !IsStringValid(req.Link) {
+		slog.Error("Link is not valid", "link", req.Link)
+		WriteError(w, errors.New("link is not valid"))
+		return
+	}
 
+	taskID := rand.Text()
 	h.archiveService.NewTask(&model.Task{
 		ID:         taskID,
-		Links:      req.Links,
+		Links:      map[string]struct{}{req.Link: {}},
 		Downloaded: make(map[string]string),
 	})
-	slog.Info("New task created", "taskID", taskID, "links", req.Links)
 
 	err = h.archiveService.SendForLoadTasks(taskID)
 	if err != nil {
@@ -58,7 +84,15 @@ func (h *CollectorHandler) HandleStartTask(w http.ResponseWriter, r *http.Reques
 	WriteSuccess(w, map[string]string{"taskID": taskID})
 }
 
-func (h *CollectorHandler) AddedLink(w http.ResponseWriter, r *http.Request) {
+// HandleAddedLink godoc
+// @Summary      Добавить ссылку в задачу
+// @Tags         tasks
+// @Accept       json
+// @Produce      json
+// @Param        taskID path string true "ID задачи"
+// @Param        request body object{link=string} true "Ссылка для скачивания"
+// @Router       /add/{taskID} [post]
+func (h *CollectorHandler) HandleAddedLink(w http.ResponseWriter, r *http.Request) {
 	taskID := chi.URLParam(r, "taskID")
 	var req struct {
 		Link string `json:"link"`
@@ -68,6 +102,12 @@ func (h *CollectorHandler) AddedLink(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		slog.Error("Failed to decode request body for AddedLink", "error", err)
 		WriteError(w, errors.New("failed to decode request body"))
+		return
+	}
+
+	if !IsStringValid(req.Link) {
+		slog.Error("Link is not valid", "link", req.Link)
+		WriteError(w, errors.New("link is not valid"))
 		return
 	}
 
@@ -89,6 +129,12 @@ func (h *CollectorHandler) AddedLink(w http.ResponseWriter, r *http.Request) {
 	WriteSuccess(w, map[string]string{"taskID": taskID})
 }
 
+// HandleGetStatus godoc
+// @Summary      Получить статус задачи
+// @Tags         tasks
+// @Produce      json
+// @Param        taskID path string true "ID задачи"
+// @Router       /status/{taskID} [get]
 func (h *CollectorHandler) HandleGetStatus(w http.ResponseWriter, r *http.Request) {
 	taskID := chi.URLParam(r, "taskID")
 	status := h.archiveService.GetStatus(taskID)
@@ -105,17 +151,7 @@ func (h *CollectorHandler) HandleGetStatus(w http.ResponseWriter, r *http.Reques
 		}
 	}
 	if count >= config.GetEnvInt("MAX_FILES_PER_TASK", 10) {
-		archPath := h.archiveService.ZipArchive(taskID)
-		if archPath == "" {
-			slog.Error("Failed to create archive in HandleGetStatus", "taskID", taskID)
-			WriteError(w, errors.New("failed to create archive"))
-			return
-		}
-		slog.Info("Archive created and sent in HandleGetStatus", "taskID", taskID, "archivePath", archPath)
-		w.Header().Set("Content-Type", "application/zip")
-		w.Header().Set("Content-Disposition", "attachment; filename="+taskID+".zip")
-		w.WriteHeader(http.StatusOK)
-		http.ServeFile(w, r, archPath)
+		h.HandleGetZip(w, r)
 		return
 	}
 
@@ -123,6 +159,12 @@ func (h *CollectorHandler) HandleGetStatus(w http.ResponseWriter, r *http.Reques
 	WriteSuccess(w, status)
 }
 
+// HandleRemoveTask godoc
+// @Summary      Удалить задачу
+// @Tags         tasks
+// @Produce      json
+// @Param        taskID path string true "ID задачи"
+// @Router       /remove/{taskID} [delete]
 func (h *CollectorHandler) HandleRemoveTask(w http.ResponseWriter, r *http.Request) {
 	taskID := chi.URLParam(r, "taskID")
 	h.archiveService.RemoveTask(taskID)
@@ -130,7 +172,13 @@ func (h *CollectorHandler) HandleRemoveTask(w http.ResponseWriter, r *http.Reque
 	WriteSuccess(w, map[string]string{"taskID": taskID})
 }
 
-func (h *CollectorHandler) GetZip(w http.ResponseWriter, r *http.Request) {
+// HandleGetZip godoc
+// @Summary      Получить ссылку на архив
+// @Tags         tasks
+// @Produce      json
+// @Param        taskID path string true "ID задачи"
+// @Router       /zip/{taskID} [get]
+func (h *CollectorHandler) HandleGetZip(w http.ResponseWriter, r *http.Request) {
 	taskID := chi.URLParam(r, "taskID")
 	archPath := h.archiveService.ZipArchive(taskID)
 	if archPath == "" {
@@ -143,7 +191,7 @@ func (h *CollectorHandler) GetZip(w http.ResponseWriter, r *http.Request) {
 	WriteSuccess(w, map[string]string{"archiveUrl": archiveUrl})
 }
 
-func (h *CollectorHandler) ServeArchive(w http.ResponseWriter, r *http.Request) {
+func (h *CollectorHandler) HandleServeArchive(w http.ResponseWriter, r *http.Request) {
 	taskID := chi.URLParam(r, "taskID")
 	archPath := filepath.Join("archive", taskID+".zip")
 

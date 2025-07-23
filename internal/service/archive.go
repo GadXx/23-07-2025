@@ -34,6 +34,7 @@ func (s *ArchiveService) NewTask(task *model.Task) *model.Task {
 	s.sem <- struct{}{}
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
 	s.tasks[task.ID] = task
 	err := os.Mkdir(filepath.Join(os.Getenv("SESSION_DIR"), task.ID), 0755)
 	if err != nil {
@@ -41,18 +42,20 @@ func (s *ArchiveService) NewTask(task *model.Task) *model.Task {
 	} else {
 		slog.Info("Session directory created for new task", "taskID", task.ID)
 	}
+
 	return s.tasks[task.ID]
 }
 
 func (s *ArchiveService) AddLink(taskID string, link string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
 	task, ok := s.tasks[taskID]
 	if !ok {
 		slog.Error("No such task in AddLink", "taskID", taskID)
 		return fmt.Errorf("no such task: %s", taskID)
 	}
-	task.Links = append(task.Links, link)
+	task.Links[link] = struct{}{}
 	slog.Info("Link added to task", "taskID", taskID, "link", link)
 	return nil
 }
@@ -65,7 +68,7 @@ func (s *ArchiveService) SendForLoadTasks(taskID string) error {
 		slog.Error("SendForLoadTasks: task not found", "taskID", taskID)
 		return fmt.Errorf("task not found: %s", taskID)
 	}
-	for _, link := range task.Links {
+	for link := range task.Links {
 		slog.Info("Sending link for download", "taskID", taskID, "link", link)
 		s.downloader.AddTask(&LoadTask{ID: taskID, Link: link})
 	}
@@ -95,15 +98,9 @@ func (s *ArchiveService) GetStatus(taskID string) map[string]string {
 
 func (s *ArchiveService) RemoveTask(taskID string) {
 	s.mu.Lock()
-	_, existed := s.tasks[taskID]
 	delete(s.tasks, taskID)
 	s.mu.Unlock()
 	<-s.sem
-	if existed {
-		slog.Info("Task removed", "taskID", taskID)
-	} else {
-		slog.Warn("RemoveTask: task not found", "taskID", taskID)
-	}
 }
 
 func (s *ArchiveService) GetTask(taskID string) *model.Task {
@@ -175,7 +172,5 @@ func (s *ArchiveService) ZipArchive(taskID string) string {
 		slog.Error("Failed to walk source directory for zip", "sourceDir", sourceDir, "error", walkErr)
 		return ""
 	}
-
-	slog.Info("Archive created", "taskID", taskID, "archivePath", archivePath)
 	return archivePath
 }

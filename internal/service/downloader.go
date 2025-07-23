@@ -50,8 +50,20 @@ func (s *DownloaderService) StartDownloader(workers int) {
 }
 
 func (s *DownloaderService) Download(session string, url string) bool {
-	slog.Info("Downloading file", "link", url)
 	sessionDir := os.Getenv("SESSION_DIR")
+
+	head, err := http.Head(url)
+	if err != nil {
+		return false
+	}
+	switch head.Header["Content-Type"][0] {
+	case "image/jpeg":
+	case "image/png":
+	case "application/pdf":
+	default:
+		return false
+	}
+
 	resp, err := http.Get(url)
 	if err != nil {
 		return false
@@ -61,8 +73,6 @@ func (s *DownloaderService) Download(session string, url string) bool {
 	splitUrl := strings.Split(url, "/")
 	fileName := splitUrl[len(splitUrl)-1]
 
-	slog.Info("Saving file", "name", fileName)
-
 	outPath := filepath.Join(sessionDir, session, fileName)
 	out, err := os.Create(outPath)
 	if err != nil {
@@ -71,14 +81,12 @@ func (s *DownloaderService) Download(session string, url string) bool {
 	}
 	defer out.Close()
 
-	slog.Info("Writing file", "name", fileName)
 	_, err = io.Copy(out, resp.Body)
 
 	return err == nil
 }
 
 func (s *DownloaderService) AddTask(task *LoadTask) {
-	slog.Info("Adding task to download queue", "link", task.Link)
 	s.in <- task
 }
 

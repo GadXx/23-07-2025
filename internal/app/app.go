@@ -6,8 +6,11 @@ import (
 	"zipcollector/internal/handler"
 	"zipcollector/internal/service"
 
+	_ "zipcollector/docs"
+
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
+	chiMiddleware "github.com/go-chi/chi/v5/middleware"
+	httpSwagger "github.com/swaggo/http-swagger"
 )
 
 type App struct {
@@ -32,17 +35,16 @@ func NewApp() *App {
 
 	router := chi.NewRouter()
 
-	router.Use(middleware.RequestID)
-	router.Use(middleware.RealIP)
-	router.Use(middleware.Logger)
-	router.Use(middleware.Recoverer)
+	router.Use(chiMiddleware.Logger)
+
+	router.Get("/docs/*", httpSwagger.WrapHandler)
 
 	router.Post("/start", collector.HandleStartTask)
-	router.Post("/add/{taskID}", collector.AddedLink)
+	router.Post("/add/{taskID}", collector.HandleAddedLink)
 	router.Get("/status/{taskID}", collector.HandleGetStatus)
-	router.Get("/zip/{taskID}", collector.GetZip)
+	router.Get("/zip/{taskID}", collector.HandleGetZip)
 	router.Delete("/remove/{taskID}", collector.HandleRemoveTask)
-	router.Get("/archive/{taskID}.zip", collector.ServeArchive)
+	router.Get("/archive/{taskID}.zip", collector.HandleServeArchive)
 
 	return &App{
 		Router: router,

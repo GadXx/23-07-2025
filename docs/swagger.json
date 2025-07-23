@@ -1,0 +1,140 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "contact": {}
+    },
+    "paths": {
+        "/add/{taskID}": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tasks"
+                ],
+                "summary": "Добавить ссылку в задачу",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID задачи",
+                        "name": "taskID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Ссылка для скачивания",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "link": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/remove/{taskID}": {
+            "delete": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tasks"
+                ],
+                "summary": "Удалить задачу",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID задачи",
+                        "name": "taskID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/start": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tasks"
+                ],
+                "summary": "Создать новую задачу",
+                "parameters": [
+                    {
+                        "description": "Ссылка на файл",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "link": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/status/{taskID}": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tasks"
+                ],
+                "summary": "Получить статус задачи",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID задачи",
+                        "name": "taskID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/zip/{taskID}": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tasks"
+                ],
+                "summary": "Получить ссылку на архив",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID задачи",
+                        "name": "taskID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        }
+    }
+}

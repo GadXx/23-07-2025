@@ -1,0 +1,91 @@
+info:
+  contact: {}
+paths:
+  /add/{taskID}:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID задачи
+        in: path
+        name: taskID
+        required: true
+        type: string
+      - description: Ссылка для скачивания
+        in: body
+        name: request
+        required: true
+        schema:
+          properties:
+            link:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses: {}
+      summary: Добавить ссылку в задачу
+      tags:
+      - tasks
+  /remove/{taskID}:
+    delete:
+      parameters:
+      - description: ID задачи
+        in: path
+        name: taskID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses: {}
+      summary: Удалить задачу
+      tags:
+      - tasks
+  /start:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Ссылка на файл
+        in: body
+        name: request
+        required: true
+        schema:
+          properties:
+            link:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses: {}
+      summary: Создать новую задачу
+      tags:
+      - tasks
+  /status/{taskID}:
+    get:
+      parameters:
+      - description: ID задачи
+        in: path
+        name: taskID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses: {}
+      summary: Получить статус задачи
+      tags:
+      - tasks
+  /zip/{taskID}:
+    get:
+      parameters:
+      - description: ID задачи
+        in: path
+        name: taskID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses: {}
+      summary: Получить ссылку на архив
+      tags:
+      - tasks
+swagger: "2.0"
